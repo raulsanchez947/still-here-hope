@@ -55,6 +55,26 @@ function normalize(text = "") {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, " ");
 }
 
+function parseRequestBody(body) {
+  if (!body) {
+    return {};
+  }
+
+  if (typeof body === "string") {
+    try {
+      return JSON.parse(body);
+    } catch {
+      return {};
+    }
+  }
+
+  if (typeof body === "object") {
+    return body;
+  }
+
+  return {};
+}
+
 function isInstructionDisclosureRequest(message = "") {
   const text = normalize(message);
 
@@ -187,7 +207,8 @@ module.exports = async function handler(request, response) {
     return response.status(405).json({ error: "Method not allowed" });
   }
 
-  const { message, history } = request.body || {};
+  const body = parseRequestBody(request.body);
+  const { message, history } = body;
 
   if (typeof message !== "string" || !message.trim()) {
     return response.status(400).json({ error: "Message is required" });
