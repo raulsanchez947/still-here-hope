@@ -139,6 +139,18 @@ function getRecentHistory(history) {
     }));
 }
 
+function toResponseInputItem(item) {
+  return {
+    role: item.role,
+    content: [
+      {
+        type: item.role === "assistant" ? "output_text" : "input_text",
+        text: item.content
+      }
+    ]
+  };
+}
+
 function extractResponseText(data) {
   if (typeof data.output_text === "string" && data.output_text.trim()) {
     return data.output_text.trim();
@@ -179,10 +191,7 @@ function extractOpenAiErrorDetail(errorBody) {
 
 async function getAiReply(message, history) {
   const input = [
-    ...getRecentHistory(history).map((item) => ({
-      role: item.role,
-      content: [{ type: "input_text", text: item.content }]
-    })),
+    ...getRecentHistory(history).map(toResponseInputItem),
     {
       role: "user",
       content: [{ type: "input_text", text: message }]
