@@ -139,7 +139,7 @@ async function getChatReply(message) {
     }
 
     const data = await response.json();
-    setChatMode(data.mode === "ai" ? "ai" : "fallback");
+    setChatMode(data.mode === "ai" ? "ai" : "fallback", data.detail);
     return data.reply || getGuideReply(message);
   } catch (error) {
     setChatMode(
