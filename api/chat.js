@@ -157,6 +157,26 @@ function extractResponseText(data) {
   return texts.join("\n").trim();
 }
 
+function extractOpenAiErrorDetail(errorBody) {
+  try {
+    const parsed = JSON.parse(errorBody);
+    const detail =
+      parsed?.error?.message || parsed?.message || parsed?.error || null;
+
+    if (typeof detail === "string" && detail.trim()) {
+      return detail.trim().slice(0, 200);
+    }
+  } catch {
+    // ignore JSON parse failure
+  }
+
+  if (typeof errorBody === "string" && errorBody.trim()) {
+    return errorBody.trim().slice(0, 200);
+  }
+
+  return null;
+}
+
 async function getAiReply(message, history) {
   const input = [
     ...getRecentHistory(history).map((item) => ({
@@ -186,8 +206,12 @@ async function getAiReply(message, history) {
 
   if (!openAiResponse.ok) {
     const errorBody = await openAiResponse.text();
+    const detail = extractOpenAiErrorDetail(errorBody);
     console.error("OpenAI request failed", openAiResponse.status, errorBody);
-    throw new Error("OpenAI request failed");
+
+    const error = new Error("OpenAI request failed");
+    error.detail = detail;
+    throw error;
   }
 
   const data = await openAiResponse.json();
@@ -233,7 +257,8 @@ module.exports = async function handler(request, response) {
   if (!process.env.OPENAI_API_KEY) {
     return response.status(200).json({
       mode: "fallback",
-      reply: getFallbackReply(trimmedMessage)
+      reply: getFallbackReply(trimmedMessage),
+      detail: "OPENAI_API_KEY is missing in this deployment."
     });
   }
 
@@ -249,7 +274,11 @@ module.exports = async function handler(request, response) {
     console.error("Chat handler failed", error);
     return response.status(200).json({
       mode: "fallback",
-      reply: getFallbackReply(trimmedMessage)
+      reply: getFallbackReply(trimmedMessage),
+      detail:
+        typeof error?.detail === "string" && error.detail
+          ? error.detail
+          : "The AI request failed in the serverless function."
     });
   }
 };
